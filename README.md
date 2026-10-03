@@ -60,6 +60,7 @@ This makes abstention a first-class behavior of the system.
 ---
 
 ## Architecture
+![Company Knowledge Agent Architecture](assets/architecture.png)
 
 ```text
                         Employee Question

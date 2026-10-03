@@ -1,5 +1,6 @@
 # Company Knowledge Agent
 
+
 A grounded Retrieval-Augmented Generation (RAG) system for answering questions over internal company documents.
 
 The system combines dense semantic retrieval, BM25 lexical search, Reciprocal Rank Fusion (RRF), LangGraph orchestration, grounded local LLM generation, semantic source attribution, FastAPI, PostgreSQL + pgvector, and Docker.
@@ -7,6 +8,11 @@ The system combines dense semantic retrieval, BM25 lexical search, Reciprocal Ra
 Unlike a basic document chatbot, the system is designed to **abstain when the available documents do not support an answer** rather than inventing missing company policies.
 
 ---
+## Demo
+
+The interface answers employee questions using company documents and displays the source supporting each grounded response.
+
+![Company Knowledge Agent Demo](assets/ui-demo.png)
 
 ## Key Features
 
@@ -58,6 +64,11 @@ I couldn't find this information in the available company documents.
 This makes abstention a first-class behavior of the system.
 
 ---
+## Demo
+
+The interface answers employee questions using company documents and displays the source supporting each grounded response.
+
+![Company Knowledge Agent Demo](assets/ui-demo.png)
 
 ## Architecture
 ![Company Knowledge Agent Architecture](assets/architecture.png)

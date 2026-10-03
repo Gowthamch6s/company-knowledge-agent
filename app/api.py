@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from pathlib import Path
+
+from fastapi.responses import FileResponse
+
 from app.graph import graph
 from app.source_attribution import select_supporting_sources
 
@@ -18,6 +22,16 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse(
+        STATIC_DIR / "index.html"
+    )
 
 
 # ============================================================

@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Grounded AI assistant for internal company knowledge."
+    >
+
+    <title>Company Knowledge Agent</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --background: #f7f8fc;
+            --surface: #ffffff;
+            --surface-soft: #f8f9fc;
+
+            --text: #172033;
+            --text-secondary: #344054;
+            --muted: #667085;
+            --light-muted: #98a2b3;
+
+            --border: #e4e7ec;
+
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --primary-soft: #eef2ff;
+
+            --success: #067647;
+            --success-bg: #ecfdf3;
+            --success-border: #abefc6;
+
+            --warning: #b54708;
+            --warning-bg: #fffaeb;
+            --warning-border: #fedf89;
+
+            --danger: #b42318;
+            --danger-bg: #fef3f2;
+
+            --shadow:
+                0 1px 2px rgba(16, 24, 40, 0.04),
+                0 8px 28px rgba(16, 24, 40, 0.06);
+        }
+
+
+        body {
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            min-height: 100vh;
+
+            color: var(--text);
+
+            background:
+                radial-gradient(
+                    circle at 50% 0%,
+                    #eef2ff 0,
+                    var(--background) 35%
+                );
+        }
+
+
+        button,
+        input {
+            font: inherit;
+        }
+
+
+        /* ==================================================
+           NAVIGATION
+        ================================================== */
+
+        .navbar {
+            height: 72px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 7%;
+
+            background: rgba(255, 255, 255, 0.86);
+
+            border-bottom:
+                1px solid rgba(228, 231, 236, 0.9);
+
+            backdrop-filter: blur(14px);
+
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+
+            border-radius: 10px;
+
+            display: grid;
+            place-items: center;
+
+            color: white;
+            background:
+                linear-gradient(
+                    135deg,
+                    #6366f1,
+                    #4338ca
+                );
+
+            font-weight: 800;
+        }
+
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+
+            border-radius: 50%;
+
+            background: #12b76a;
+
+            box-shadow:
+                0 0 0 4px #ecfdf3;
+        }
+
+
+        /* ==================================================
+           MAIN
+        ================================================== */
+
+        main {
+            width: min(860px, 90%);
+
+            margin: 0 auto;
+
+            padding:
+                78px 0
+                50px;
+        }
+
+
+        /* ==================================================
+           HERO
+        ================================================== */
+
+        .hero {
+            text-align: center;
+
+            margin-bottom: 36px;
+        }
+
+
+        .eyebrow {
+            color: var(--primary);
+
+            font-size: 12px;
+            font-weight: 750;
+
+            letter-spacing: 0.1em;
+
+            text-transform: uppercase;
+
+            margin-bottom: 14px;
+        }
+
+
+        h1 {
+            font-size:
+                clamp(
+                    34px,
+                    5vw,
+                    50px
+                );
+
+            line-height: 1.08;
+
+            letter-spacing: -0.04em;
+
+            margin-bottom: 15px;
+        }
+
+
+        .subtitle {
+            max-width: 620px;
+
+            margin: 0 auto;
+
+            color: var(--muted);
+
+            font-size: 16px;
+            line-height: 1.65;
+        }
+
+
+        /* ==================================================
+           SEARCH
+        ================================================== */
+
+        .search-card {
+            display: flex;
+            gap: 10px;
+
+            padding: 9px;
+
+            border:
+                1px solid
+                var(--border);
+
+            border-radius: 17px;
+
+            background:
+                var(--surface);
+
+            box-shadow:
+                var(--shadow);
+
+            transition:
+                border-color 0.2s,
+                box-shadow 0.2s;
+        }
+
+
+        .search-card:focus-within {
+            border-color: #c7d7fe;
+
+            box-shadow:
+                0 0 0 4px
+                rgba(79, 70, 229, 0.06),
+                var(--shadow);
+        }
+
+
+        #questionInput {
+            flex: 1;
+
+            min-width: 0;
+
+            border: none;
+            outline: none;
+
+            padding:
+                14px 15px;
+
+            color: var(--text);
+
+            background:
+                transparent;
+
+            font-size: 15px;
+        }
+
+
+        #questionInput::placeholder {
+            color:
+                var(--light-muted);
+        }
+
+
+        #askButton {
+            min-width: 88px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            padding:
+                0 21px;
+
+            background:
+                var(--primary);
+
+            color: white;
+
+            font-weight: 650;
+            font-size: 14px;
+
+            cursor: pointer;
+
+            transition:
+                transform 0.15s,
+                background 0.15s;
+        }
+
+
+        #askButton:hover:not(:disabled) {
+            background:
+                var(--primary-dark);
+
+            transform:
+                translateY(-1px);
+        }
+
+
+        #askButton:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+
+        /* ==================================================
+           EXAMPLES
+        ================================================== */
+
+        .examples {
+            margin-top: 20px;
+        }
+
+
+        .examples-label {
+            color: var(--muted);
+
+            font-size: 12px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+
+            gap: 8px;
+        }
+
+
+        .chip {
+            border:
+                1px solid
+                var(--border);
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.72
+                );
+
+            color:
+                #475467;
+
+            border-radius:
+                999px;
+
+            padding:
+                8px 13px;
+
+            font-size:
+                12px;
+
+            cursor:
+                pointer;
+
+            transition:
+                0.18s ease;
+        }
+
+
+        .chip:hover {
+            background:
+                white;
+
+            border-color:
+                #c7d7fe;
+
+            color:
+                var(--primary);
+
+            transform:
+                translateY(-1px);
+        }
+
+
+        /* ==================================================
+           RESULT
+        ================================================== */
+
+        #result {
+            display: none;
+
+            margin-top: 32px;
+        }
+
+
+        .answer-card {
+            border:
+                1px solid
+                var(--border);
+
+            border-radius:
+                18px;
+
+            background:
+                var(--surface);
+
+            padding:
+                27px;
+
+            box-shadow:
+                var(--shadow);
+
+            animation:
+                resultIn
+                0.25s ease-out;
+        }
+
+
+        @keyframes resultIn {
+            from {
+                opacity: 0;
+                transform:
+                    translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform:
+                    translateY(0);
+            }
+        }
+
+
+        .answer-header {
+            display: flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                space-between;
+
+            gap: 16px;
+
+            margin-bottom:
+                18px;
+        }
+
+
+        .answer-status {
+            display:
+                inline-flex;
+
+            align-items:
+                center;
+
+            gap: 7px;
+
+            padding:
+                6px 10px;
+
+            border-radius:
+                999px;
+
+            font-size:
+                11px;
+
+            font-weight:
+                750;
+        }
+
+
+        .answer-status.grounded {
+            color:
+                var(--success);
+
+            background:
+                var(--success-bg);
+
+            border:
+                1px solid
+                var(--success-border);
+        }
+
+
+        .answer-status.abstained {
+            color:
+                var(--warning);
+
+            background:
+                var(--warning-bg);
+
+            border:
+                1px solid
+                var(--warning-border);
+        }
+
+
+        .clear-button {
+            border: none;
+
+            background:
+                transparent;
+
+            color:
+                var(--muted);
+
+            font-size:
+                12px;
+
+            cursor:
+                pointer;
+
+            padding:
+                5px 0;
+        }
+
+
+        .clear-button:hover {
+            color:
+                var(--primary);
+        }
+
+
+        .answer-text {
+            color:
+                var(--text-secondary);
+
+            font-size:
+                16px;
+
+            line-height:
+                1.75;
+        }
+
+
+        /* ==================================================
+           SOURCE
+        ================================================== */
+
+        .source-section {
+            margin-top:
+                24px;
+
+            padding-top:
+                21px;
+
+            border-top:
+                1px solid
+                var(--border);
+        }
+
+
+        .source-heading {
+            display: flex;
+
+            align-items:
+                center;
+
+            gap: 7px;
+
+            color:
+                var(--muted);
+
+            font-size:
+                10px;
+
+            font-weight:
+                750;
+
+            letter-spacing:
+                0.1em;
+
+            text-transform:
+                uppercase;
+
+            margin-bottom:
+                11px;
+        }
+
+
+        .verified-dot {
+            width:
+                7px;
+
+            height:
+                7px;
+
+            border-radius:
+                50%;
+
+            background:
+                #12b76a;
+        }
+
+
+        .source-card {
+            display: flex;
+
+            align-items:
+                center;
+
+            gap: 13px;
+
+            padding:
+                13px 14px;
+
+            border:
+                1px solid
+                var(--border);
+
+            border-radius:
+                12px;
+
+            background:
+                var(--surface-soft);
+        }
+
+
+        .document-icon {
+            width:
+                38px;
+
+            height:
+                38px;
+
+            flex-shrink:
+                0;
+
+            display:
+                grid;
+
+            place-items:
+                center;
+
+            border-radius:
+                9px;
+
+            color:
+                var(--primary);
+
+            background:
+                var(--primary-soft);
+
+            font-size:
+                17px;
+        }
+
+
+        .source-title {
+            color:
+                var(--text);
+
+            font-size:
+                13px;
+
+            font-weight:
+                650;
+
+            margin-bottom:
+                3px;
+        }
+
+
+        .source-details {
+            color:
+                var(--muted);
+
+            font-size:
+                12px;
+
+            line-height:
+                1.5;
+        }
+
+
+        /* ==================================================
+           LOADING
+        ================================================== */
+
+        .loading {
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            gap:
+                11px;
+
+            color:
+                var(--muted);
+
+            font-size:
+                14px;
+        }
+
+
+        .spinner {
+            width:
+                18px;
+
+            height:
+                18px;
+
+            border:
+                2px solid
+                #e4e7ec;
+
+            border-top-color:
+                var(--primary);
+
+            border-radius:
+                50%;
+
+            animation:
+                spin
+                0.75s
+                linear
+                infinite;
+        }
+
+
+        @keyframes spin {
+            to {
+                transform:
+                    rotate(360deg);
+            }
+        }
+
+
+        /* ==================================================
+           TECHNOLOGY BAR
+        ================================================== */
+
+        .technology {
+            margin-top:
+                48px;
+
+            text-align:
+                center;
+        }
+
+
+        .technology-label {
+            color:
+                var(--light-muted);
+
+            font-size:
+                10px;
+
+            text-transform:
+                uppercase;
+
+            letter-spacing:
+                0.1em;
+
+            margin-bottom:
+                10px;
+        }
+
+
+        .technology-items {
+            display:
+                flex;
+
+            justify-content:
+                center;
+
+            flex-wrap:
+                wrap;
+
+            gap:
+                7px;
+        }
+
+
+        .technology-item {
+            color:
+                var(--muted);
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.55
+                );
+
+            border:
+                1px solid
+                var(--border);
+
+            border-radius:
+                999px;
+
+            padding:
+                5px 9px;
+
+            font-size:
+                10px;
+        }
+
+
+        /* ==================================================
+           FOOTER
+        ================================================== */
+
+        footer {
+            margin-top:
+                24px;
+
+            text-align:
+                center;
+
+            color:
+                var(--light-muted);
+
+            font-size:
+                11px;
+        }
+
+
+        /* ==================================================
+           MOBILE
+        ================================================== */
+
+        @media (
+            max-width: 600px
+        ) {
+
+            .navbar {
+                padding:
+                    0 5%;
+            }
+
+
+            .system-status span:last-child {
+                display:
+                    none;
+            }
+
+
+            main {
+                width:
+                    92%;
+
+                padding-top:
+                    52px;
+            }
+
+
+            .search-card {
+                flex-direction:
+                    column;
+            }
+
+
+            #askButton {
+                min-height:
+                    45px;
+            }
+
+
+            .answer-card {
+                padding:
+                    21px;
+            }
+
+
+            .answer-header {
+                align-items:
+                    flex-start;
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+
+    <!-- ==================================================
+         NAVBAR
+    =================================================== -->
+
+    <nav class="navbar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                K
+            </div>
+
+            <span>
+                Company Knowledge Agent
+            </span>
+
+        </div>
+
+
+        <div class="system-status">
+
+            <span class="status-dot"></span>
+
+            <span>
+                Knowledge Agent Online
+            </span>
+
+        </div>
+
+    </nav>
+
+
+    <!-- ==================================================
+         MAIN
+    =================================================== -->
+
+    <main>
+
+
+        <!-- HERO -->
+
+        <section class="hero">
+
+            <div class="eyebrow">
+                Grounded Enterprise AI
+            </div>
+
+
+            <h1>
+                Ask your company knowledge.
+            </h1>
+
+
+            <p class="subtitle">
+                Search internal company documents and receive
+                grounded answers with supporting source attribution.
+            </p>
+
+        </section>
+
+
+        <!-- SEARCH -->
+
+        <section>
+
+            <div class="search-card">
+
+                <input
+                    id="questionInput"
+                    type="text"
+                    placeholder="Ask about PTO, payroll, remote work..."
+                    autocomplete="off"
+                    aria-label="Company knowledge question"
+                >
+
+
+                <button
+                    id="askButton"
+                    type="button"
+                >
+                    Ask
+                </button>
+
+            </div>
+
+
+            <!-- EXAMPLE QUESTIONS -->
+
+            <div class="examples">
+
+                <div class="examples-label">
+                    Try an example
+                </div>
+
+
+                <div class="chips">
+
+                    <button
+                        class="chip"
+                        data-question="How much vacation do employees get?"
+                    >
+                        PTO policy
+                    </button>
+
+
+                    <button
+                        class="chip"
+                        data-question="When does Nexus pay its employees?"
+                    >
+                        Pay schedule
+                    </button>
+
+
+                    <button
+                        class="chip"
+                        data-question="Am I allowed to work from home?"
+                    >
+                        Remote work
+                    </button>
+
+
+                    <button
+                        class="chip"
+                        data-question="What security measures are required for company laptops?"
+                    >
+                        Laptop security
+                    </button>
+
+
+                    <button
+                        class="chip"
+                        data-question="Can unused PTO be carried over to the next year?"
+                    >
+                        Unsupported policy
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- RESULT -->
+
+        <section
+            id="result"
+            aria-live="polite"
+        ></section>
+
+
+        <!-- TECHNOLOGY -->
+
+        <section class="technology">
+
+            <div class="technology-label">
+                Powered by
+            </div>
+
+
+            <div class="technology-items">
+
+                <span class="technology-item">
+                    LangGraph
+                </span>
+
+                <span class="technology-item">
+                    pgvector
+                </span>
+
+                <span class="technology-item">
+                    BM25
+                </span>
+
+                <span class="technology-item">
+                    RRF
+                </span>
+
+                <span class="technology-item">
+                    FastAPI
+                </span>
+
+                <span class="technology-item">
+                    Local Llama 3
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+            Answers are generated only from available company documents.
+        </footer>
+
+
+    </main>
+
+
+    <script>
+
+        const input =
+            document.getElementById(
+                "questionInput"
+            );
+
+        const askButton =
+            document.getElementById(
+                "askButton"
+            );
+
+        const resultContainer =
+            document.getElementById(
+                "result"
+            );
+
+
+        // ==================================================
+        // ESCAPE HTML
+        // ==================================================
+
+        function escapeHtml(value) {
+
+            const div =
+                document.createElement(
+                    "div"
+                );
+
+            div.textContent =
+                value ?? "";
+
+            return div.innerHTML;
+        }
+
+
+        // ==================================================
+        // FRIENDLY FILE NAME
+        // ==================================================
+
+        function formatFilename(
+            filename
+        ) {
+
+            if (!filename) {
+                return "Company document";
+            }
+
+            const cleaned =
+                filename
+                    .replaceAll("_", " ")
+                    .replace(
+                        /\.pdf$/i,
+                        ""
+                    );
+
+            return cleaned
+                .split(" ")
+                .map(
+                    word =>
+                        word
+                            ? word[0]
+                                .toUpperCase()
+                                + word.slice(1)
+                            : ""
+                )
+                .join(" ");
+        }
+
+
+        // ==================================================
+        // ASK QUESTION
+        // ==================================================
+
+        async function askQuestion(
+            question = null
+        ) {
+
+            const finalQuestion =
+                (
+                    question ||
+                    input.value
+                ).trim();
+
+
+            if (!finalQuestion) {
+
+                input.focus();
+
+                return;
+            }
+
+
+            input.value =
+                finalQuestion;
+
+
+            askButton.disabled =
+                true;
+
+            askButton.textContent =
+                "Thinking...";
+
+
+            resultContainer.style.display =
+                "block";
+
+
+            resultContainer.innerHTML = `
+                <div class="answer-card">
+
+                    <div class="loading">
+
+                        <div class="spinner"></div>
+
+                        <span>
+                            Searching company knowledge...
+                        </span>
+
+                    </div>
+
+                </div>
+            `;
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/ask",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    {
+                                        question:
+                                            finalQuestion
+                                    }
+                                )
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Request failed"
+                    );
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                renderResult(
+                    data
+                );
+
+            }
+
+            catch (error) {
+
+                renderError();
+
+            }
+
+            finally {
+
+                askButton.disabled =
+                    false;
+
+                askButton.textContent =
+                    "Ask";
+
+            }
+        }
+
+
+        // ==================================================
+        // RENDER RESULT
+        // ==================================================
+
+        function renderResult(
+            data
+        ) {
+
+            const grounded =
+                data.answerable === true;
+
+
+            const statusClass =
+                grounded
+                    ? "grounded"
+                    : "abstained";
+
+
+            const statusText =
+                grounded
+                    ? "✓ Grounded answer"
+                    : "No supported answer";
+
+
+            let sourceHtml =
+                "";
+
+
+            if (
+                grounded &&
+                Array.isArray(
+                    data.sources
+                ) &&
+                data.sources.length > 0
+            ) {
+
+                const source =
+                    data.sources[0];
+
+
+                const filename =
+                    formatFilename(
+                        source.filename
+                    );
+
+
+                const section =
+                    source.section ||
+                    "Document section";
+
+
+                const page =
+                    source.page != null
+                        ? `Page ${source.page}`
+                        : "";
+
+
+                sourceHtml = `
+                    <div class="source-section">
+
+                        <div class="source-heading">
+
+                            <span class="verified-dot"></span>
+
+                            Verified supporting source
+
+                        </div>
+
+
+                        <div class="source-card">
+
+                            <div class="document-icon">
+                                ▤
+                            </div>
+
+
+                            <div>
+
+                                <div class="source-title">
+                                    ${escapeHtml(filename)}
+                                </div>
+
+
+                                <div class="source-details">
+
+                                    ${escapeHtml(section)}
+
+                                    ${
+                                        page
+                                            ? " · " +
+                                              escapeHtml(page)
+                                            : ""
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+            }
+
+
+            resultContainer.innerHTML = `
+                <div class="answer-card">
+
+                    <div class="answer-header">
+
+                        <div
+                            class="answer-status ${statusClass}"
+                        >
+                            ${statusText}
+                        </div>
+
+
+                        <button
+                            class="clear-button"
+                            onclick="clearResult()"
+                        >
+                            New question
+                        </button>
+
+                    </div>
+
+
+                    <div class="answer-text">
+                        ${escapeHtml(data.answer)}
+                    </div>
+
+
+                    ${sourceHtml}
+
+                </div>
+            `;
+        }
+
+
+        // ==================================================
+        // ERROR
+        // ==================================================
+
+        function renderError() {
+
+            resultContainer.innerHTML = `
+                <div class="answer-card">
+
+                    <div class="answer-header">
+
+                        <div
+                            class="answer-status abstained"
+                        >
+                            Service unavailable
+                        </div>
+
+                    </div>
+
+
+                    <div class="answer-text">
+                        The knowledge service could not process
+                        your request. Please try again.
+                    </div>
+
+                </div>
+            `;
+        }
+
+
+        // ==================================================
+        // CLEAR
+        // ==================================================
+
+        function clearResult() {
+
+            resultContainer.innerHTML =
+                "";
+
+            resultContainer.style.display =
+                "none";
+
+            input.value =
+                "";
+
+            input.focus();
+        }
+
+
+        // ==================================================
+        // EVENTS
+        // ==================================================
+
+        askButton.addEventListener(
+            "click",
+            () => askQuestion()
+        );
+
+
+        input.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Enter" &&
+                    !askButton.disabled
+                ) {
+
+                    askQuestion();
+                }
+            }
+        );
+
+
+        document
+            .querySelectorAll(
+                ".chip"
+            )
+            .forEach(
+                chip => {
+
+                    chip.addEventListener(
+                        "click",
+                        () => {
+
+                            askQuestion(
+                                chip.dataset.question
+                            );
+                        }
+                    );
+                }
+            );
+
+    </script>
+
+</body>
+</html>

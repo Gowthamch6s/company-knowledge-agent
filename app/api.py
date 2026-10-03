@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.graph import graph
+from app.source_attribution import select_supporting_sources
 
 
 # ============================================================
@@ -53,8 +54,6 @@ class AskResponse(BaseModel):
 def health():
     """
     Lightweight API health check.
-
-    This confirms that the FastAPI application is running.
     """
 
     return {
@@ -76,6 +75,10 @@ def ask(request: AskRequest):
     Run a question through the complete LangGraph RAG pipeline.
     """
 
+    # --------------------------------------------------------
+    # Clean the incoming question
+    # --------------------------------------------------------
+
     question = request.question.strip()
 
     if not question:
@@ -83,6 +86,10 @@ def ask(request: AskRequest):
             status_code=400,
             detail="Question cannot be empty.",
         )
+
+    # --------------------------------------------------------
+    # Run the LangGraph pipeline
+    # --------------------------------------------------------
 
     try:
         result = graph.invoke(
@@ -95,7 +102,7 @@ def ask(request: AskRequest):
         )
 
     except Exception as exc:
-        # Do not expose internal stack traces or database details
+        # Do not expose internal database/model errors
         # through the public API.
         raise HTTPException(
             status_code=500,
@@ -103,33 +110,35 @@ def ask(request: AskRequest):
         ) from exc
 
     # --------------------------------------------------------
-    # Build source metadata
+    # Select supporting sources
     # --------------------------------------------------------
 
     sources = []
 
-    seen = set()
+    # Only attach a source when the system actually
+    # produced a supported answer.
+    #
+    # If the system abstains, sources remain empty.
+    if result["answerable"]:
 
-    for item in result.get("evidence", []):
-
-        source_key = (
-            item.get("filename"),
-            item.get("section"),
-            item.get("page"),
+        supporting_evidence = select_supporting_sources(
+            answer=result["answer"],
+            evidence=result.get("evidence", []),
+            limit=1,
         )
 
-        if source_key in seen:
-            continue
-
-        seen.add(source_key)
-
-        sources.append(
-            Source(
-                filename=item.get("filename"),
-                section=item.get("section"),
-                page=item.get("page"),
+        for item in supporting_evidence:
+            sources.append(
+                Source(
+                    filename=item.get("filename"),
+                    section=item.get("section"),
+                    page=item.get("page"),
+                )
             )
-        )
+
+    # --------------------------------------------------------
+    # Return API response
+    # --------------------------------------------------------
 
     return AskResponse(
         question=question,

@@ -1,6 +1,5 @@
 # Company Knowledge Agent
 
-
 A grounded Retrieval-Augmented Generation (RAG) system for answering questions over internal company documents.
 
 The system combines dense semantic retrieval, BM25 lexical search, Reciprocal Rank Fusion (RRF), LangGraph orchestration, grounded local LLM generation, semantic source attribution, FastAPI, PostgreSQL + pgvector, and Docker.
@@ -8,11 +7,14 @@ The system combines dense semantic retrieval, BM25 lexical search, Reciprocal Ra
 Unlike a basic document chatbot, the system is designed to **abstain when the available documents do not support an answer** rather than inventing missing company policies.
 
 ---
+
 ## Demo
 
 The interface answers employee questions using company documents and displays the source supporting each grounded response.
 
 ![Company Knowledge Agent Demo](assets/ui-demo.png)
+
+---
 
 ## Key Features
 
@@ -64,60 +66,57 @@ I couldn't find this information in the available company documents.
 This makes abstention a first-class behavior of the system.
 
 ---
-## Demo
 
-The interface answers employee questions using company documents and displays the source supporting each grounded response.
+## System Architecture
 
-![Company Knowledge Agent Demo](assets/ui-demo.png)
-
-## Architecture
 ![Company Knowledge Agent Architecture](assets/architecture.png)
 
+The application follows this high-level flow:
+
 ```text
-                        Employee Question
-                               |
-                               v
-                         FastAPI /ask
-                               |
-                               v
-                            LangGraph
-                               |
-                               v
-                     +--------------------+
-                     | Hybrid Retrieval   |
-                     +--------------------+
-                       /                \
-                      v                  v
-             Dense Vector Search     BM25 Search
-             + Query Expansion       Section + Content
-                      \                  /
-                       \                /
-                        v              v
-                   Reciprocal Rank Fusion
-                            (RRF)
-                              |
-                              v
-                    Top Retrieved Evidence
-                              |
-                              v
-                  Grounded Answer Generation
-                       using Local LLM
-                         /          \
-                        /            \
-               Evidence supports    Evidence does not
-                   question          support question
-                      |                    |
-                      v                    v
-                    ANSWER              ABSTAIN
-                      |
-                      v
-              Semantic Source Attribution
-                      |
-                      v
-               Structured API Response
-                      |
-                      v
-                     Web UI
+Employee Question
+       |
+       v
+FastAPI /ask
+       |
+       v
+LangGraph
+       |
+       v
+Hybrid Retrieval
+   /         \
+  v           v
+Dense       BM25
+Vector      Search
+Search
+  \           /
+   \         /
+       v
+Reciprocal Rank Fusion
+       |
+       v
+Top Retrieved Evidence
+       |
+       v
+Grounded Answer Generation
+       |
+       +----------------------+
+       |                      |
+       v                      v
+Evidence supports       Evidence does not
+the question            support the question
+       |                      |
+       v                      v
+     ANSWER                 ABSTAIN
+       |
+       v
+Semantic Source Attribution
+       |
+       v
+Structured API Response
+       |
+       v
+Web UI
 ```
 
 ### Infrastructure
@@ -133,7 +132,7 @@ Docker Compose
 
 Ollama
 |
-+-- Local Llama model
++-- Local Llama Model
 ```
 
 ---
@@ -464,7 +463,7 @@ Internal database/model exceptions are converted into a generic HTTP 500 respons
 
 ## Web Interface
 
-FastAPI also serves a lightweight browser interface at:
+FastAPI serves a lightweight browser interface at:
 
 ```text
 http://localhost:8000/
@@ -475,7 +474,7 @@ The UI allows employees to ask questions and displays either:
 - a grounded answer with its supporting source; or
 - a clear unsupported-answer state.
 
-FastAPI's interactive API documentation is also available at:
+FastAPI's interactive API documentation is available at:
 
 ```text
 http://localhost:8000/docs
@@ -533,7 +532,7 @@ Install:
 Clone the repository:
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+git clone https://github.com/Gowthamch6s/company-knowledge-agent.git
 cd company-knowledge-agent
 ```
 
@@ -567,10 +566,10 @@ Check installed models:
 ollama list
 ```
 
-Pull a model if necessary:
+Pull the configured model if necessary:
 
 ```bash
-ollama pull llama3
+ollama pull llama3.2
 ```
 
 Verify Ollama is running before starting the application.
@@ -670,14 +669,14 @@ The PostgreSQL data is stored in a persistent Docker volume.
 python -m eval.hybrid_retrieval_tests
 ```
 
-Expected benchmark snapshot:
+Recorded benchmark:
 
 ```text
-Strategy            Hit@1    Hit@3
-----------------------------------
-Vector + Expansion  9/10     9/10
-BM25                9/10     10/10
-Equal RRF Hybrid    9/10     10/10
+Strategy             Hit@1    Hit@3
+-----------------------------------
+Vector + Expansion    9/10     9/10
+BM25                  9/10    10/10
+Equal RRF Hybrid      9/10    10/10
 ```
 
 ### Grounded Answer Evaluation
@@ -756,7 +755,7 @@ Current limitations include:
 - BM25 currently constructs its index from stored chunks at query time;
 - source attribution returns only the strongest supporting source through the API;
 - local LLM behavior depends on the installed Ollama model;
-- the benchmark results are specific to the included evaluation corpus;
+- benchmark results are specific to the included evaluation corpus;
 - the current document collection is small compared with a production enterprise knowledge base.
 
 Potential production improvements include persistent lexical indexing, reranking, multi-document ingestion workflows, authentication, authorization, observability, caching, asynchronous inference, larger evaluation datasets, and document-level access controls.

@@ -2,9 +2,8 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, START, END
 
-from app.retrieval import search_documents
-from app.query_expansion import expand_query
-from app.llm import generate_answer
+from app.hybrid_retrieval import hybrid_search
+from app.grounded_answer import generate_grounded_answer
 
 
 # ============================================================
@@ -14,37 +13,51 @@ from app.llm import generate_answer
 class AgentState(TypedDict):
     question: str
     evidence: list[dict]
-    evidence_sufficient: bool
+    answerable: bool
     answer: str
 
 
 # ============================================================
-# 2. RETRIEVAL NODE
+# 2. HYBRID RETRIEVAL NODE
 # ============================================================
 
 def retrieve_node(state: AgentState):
+    """
+    Retrieve the most relevant evidence using the project's
+    hybrid retrieval pipeline:
+
+        Dense retrieval
+            +
+        BM25 lexical retrieval
+            ↓
+        Reciprocal Rank Fusion
+            ↓
+        Top 3 chunks
+    """
+
     question = state["question"]
 
-    results = search_documents(
+    results = hybrid_search(
         question,
         limit=3,
-        use_expansion=True,
+        candidate_limit=10,
     )
 
     evidence = []
 
     for result in results:
-        chunk = result[0]
-        filename = result[1]
-        distance = result[2]
+        chunk = result["chunk"]
 
         evidence.append(
             {
-                "filename": filename,
+                "filename": result["filename"],
                 "page": chunk.page_number,
                 "section": chunk.section_title,
                 "content": chunk.content,
-                "similarity": float(1 - distance),
+                "similarity": result["vector_similarity"],
+                "rrf_score": result["rrf_score"],
+                "vector_rank": result["vector_rank"],
+                "bm25_rank": result["bm25_rank"],
             }
         )
 
@@ -54,120 +67,36 @@ def retrieve_node(state: AgentState):
 
 
 # ============================================================
-# 3. EVIDENCE CHECKING NODE
+# 3. GROUNDED ANSWER NODE
 # ============================================================
 
-def check_evidence_node(state: AgentState):
+def grounded_answer_node(state: AgentState):
+    """
+    Generate an answer using only the retrieved evidence.
+
+    generate_grounded_answer() is responsible for deciding
+    whether the evidence supports the requested information.
+
+    If it does not, the system abstains instead of inventing
+    a company policy.
+    """
+
     question = state["question"]
     evidence = state["evidence"]
 
-    if not evidence:
-        return {
-            "evidence_sufficient": False
-        }
-
-    expanded_question = expand_query(question).lower()
-
-    top_evidence = evidence[0]["content"].lower()
-
-    important_terms = [
-        word
-        for word in expanded_question.split()
-        if len(word) > 3
-    ]
-
-    matches = [
-        word
-        for word in important_terms
-        if word in top_evidence
-    ]
-
-    sufficient = len(matches) >= 2
+    result = generate_grounded_answer(
+        question,
+        evidence,
+    )
 
     return {
-        "evidence_sufficient": sufficient
+        "answerable": result["answerable"],
+        "answer": result["answer"],
     }
 
 
 # ============================================================
-# 4. ANSWER NODE
-# ============================================================
-
-def answer_node(state: AgentState):
-    question = state["question"]
-    evidence = state["evidence"]
-
-    context_parts = []
-
-    for item in evidence:
-        context_parts.append(
-            f"""
-Document: {item['filename']}
-Section: {item['section']}
-Page: {item['page']}
-
-{item['content']}
-"""
-        )
-
-    context = "\n".join(context_parts)
-
-    prompt = f"""
-You are a company knowledge assistant.
-
-Answer the employee's question using ONLY the information
-contained in the provided context.
-
-Rules:
-1. Do not use outside knowledge.
-2. Do not invent company policies.
-3. If the context does not support a claim, do not make that claim.
-4. Answer clearly and concisely.
-5. Do not create fake citations.
-6. Use the exact numbers, dates, and policy details from the context.
-
-CONTEXT:
-{context}
-
-EMPLOYEE QUESTION:
-{question}
-
-ANSWER:
-"""
-
-    answer = generate_answer(prompt)
-
-    return {
-        "answer": answer
-    }
-
-
-# ============================================================
-# 5. NO-ANSWER NODE
-# ============================================================
-
-def no_answer_node(state: AgentState):
-    return {
-        "answer": (
-            "I couldn't find enough evidence "
-            "in the available company documents."
-        )
-    }
-
-
-# ============================================================
-# 6. ROUTER
-# ============================================================
-
-def route_evidence(state: AgentState):
-    if state["evidence_sufficient"]:
-        return "answer"
-
-    return "no_answer"
-
-
-# ============================================================
-# 7. BUILD THE LANGGRAPH
+# 4. BUILD LANGGRAPH
 # ============================================================
 
 builder = StateGraph(AgentState)
@@ -178,56 +107,28 @@ builder.add_node(
 )
 
 builder.add_node(
-    "check_evidence",
-    check_evidence_node,
-)
-
-builder.add_node(
-    "answer",
-    answer_node,
-)
-
-builder.add_node(
-    "no_answer",
-    no_answer_node,
+    "grounded_answer",
+    grounded_answer_node,
 )
 
 
-# START -> RETRIEVE
+# START -> HYBRID RETRIEVAL
 builder.add_edge(
     START,
     "retrieve",
 )
 
 
-# RETRIEVE -> CHECK EVIDENCE
+# RETRIEVAL -> GROUNDED ANSWER
 builder.add_edge(
     "retrieve",
-    "check_evidence",
+    "grounded_answer",
 )
 
 
-# CHECK EVIDENCE -> ANSWER OR NO ANSWER
-builder.add_conditional_edges(
-    "check_evidence",
-    route_evidence,
-    {
-        "answer": "answer",
-        "no_answer": "no_answer",
-    },
-)
-
-
-# ANSWER -> END
+# GROUNDED ANSWER -> END
 builder.add_edge(
-    "answer",
-    END,
-)
-
-
-# NO ANSWER -> END
-builder.add_edge(
-    "no_answer",
+    "grounded_answer",
     END,
 )
 
@@ -236,38 +137,50 @@ graph = builder.compile()
 
 
 # ============================================================
-# 8. TEST THE GRAPH
+# 5. MANUAL TEST
 # ============================================================
 
 if __name__ == "__main__":
-    question = "How much vacation do employees get?"
 
-    result = graph.invoke(
-        {
-            "question": question,
-            "evidence": [],
-            "evidence_sufficient": False,
-            "answer": "",
-        }
-    )
+    questions = [
+        "How much vacation do employees get?",
+        "When does Nexus pay its employees?",
+        "Can unused PTO be carried over to the next year?",
+    ]
 
-    print("\nQUESTION")
-    print(result["question"])
+    for question in questions:
 
-    print("\nTOP EVIDENCE")
-
-    if result["evidence"]:
-        top = result["evidence"][0]
-
-        print(f"Section: {top['section']}")
-        print(f"Page: {top['page']}")
-        print(
-            f"Similarity: "
-            f"{top['similarity']:.4f}"
+        result = graph.invoke(
+            {
+                "question": question,
+                "evidence": [],
+                "answerable": False,
+                "answer": "",
+            }
         )
 
-    print("\nEVIDENCE SUFFICIENT")
-    print(result["evidence_sufficient"])
+        print("\n" + "=" * 90)
 
-    print("\nANSWER")
-    print(result["answer"])
+        print(f"QUESTION: {result['question']}")
+
+        print(
+            f"ANSWERABLE: "
+            f"{result['answerable']}"
+        )
+
+        print(
+            f"ANSWER: "
+            f"{result['answer']}"
+        )
+
+        print("\nSOURCES:")
+
+        for rank, item in enumerate(
+            result["evidence"],
+            start=1,
+        ):
+            print(
+                f"  #{rank} "
+                f"{item['section']} "
+                f"(Page {item['page']})"
+            )
